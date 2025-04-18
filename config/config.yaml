@@ -1,0 +1,17 @@
+# config/config.yaml
+
+mode: auto              # Options: auto, lite, balanced, enhanced
+live_mode: false        # Enable live trading
+default_agents:
+  - goal_interpreter
+  - strategy_planner
+  - market_analyst
+  - risk_manager
+  - execution_agent
+  - compliance_agent
+
+tax_reserve_ratio: 0.25
+jurisdiction: US
+
+meta_interval: 300
+compliance_interval: 600

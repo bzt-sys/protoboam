@@ -1,0 +1,10 @@
+#cat <<EOF > requirements.txt
+psutil
+pynvml
+pyyaml
+duckdb
+asyncio
+aiohttp
+openai     # Optional: if using OpenAI cloud fallback
+ollama     # Optional: for local LLM integration
+python-dotenv

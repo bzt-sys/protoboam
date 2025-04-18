@@ -1,0 +1,23 @@
+{
+  "name": "Crypto Aggressive Growth",
+  "description": "High-risk, high-reward investment focused entirely on cryptocurrency assets.",
+  "goals": [
+    "Maximize returns",
+    "Exploit crypto volatility",
+    "Short-term arbitrage"
+  ],
+  "constraints": {
+    "risk_tolerance": "high",
+    "time_horizon_years": 2,
+    "jurisdiction": "Global"
+  },
+  "preferences": {
+    "asset_classes": [
+      "Cryptocurrency"
+    ],
+    "allocation": {
+      "crypto": 100
+    },
+    "leverage_allowed": true
+  }
+}

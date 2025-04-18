@@ -1,0 +1,14 @@
+{
+    "mode": "auto",
+    "jurisdiction": "us_federal",
+    "meta_agent": {
+      "meta_interval": 300
+    },
+    "compliance_agent": {
+      "tax_reserve_ratio": 0.25
+    },
+    "execution_agent": {
+      "live_mode": false
+    }
+  }
+  

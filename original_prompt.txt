@@ -1,0 +1,126 @@
+As you generate this code/module:
+Flag any areas where the logic is speculative, unclear, or may rely on fictional libraries or functions.
+If you call an API or use a library, verify it exists and matches documented usage. If unsure, comment it clearly.
+If the code includes abstract logic (e.g., strategy planning, compliance parsing), explain the assumptions inline.
+Wrap high-risk or speculative segments in clearly marked comment blocks like:
+⚠️ POTENTIAL HALLUCINATION: Function simulate_market_reaction() may not exist or needs custom implementation.
+Where possible, insert TODO: or REVIEW: comments next to code that needs testing or manual validation.
+Do NOT invent APIs, libraries, or functions unless explicitly asked to simulate or draft one.
+Primary Objective
+Develop an intelligent, autonomous ReAct-based multi-agent system for financial goal execution, legal compliance, and strategic self-optimization, deployable on a domestic personal computer with shared resource constraints.
+The system must:
+Accept abstract or specific financial goals
+Generate and execute strategies using real-time + cached data
+Manage its own API usage and costs
+Operate safely in multiple deployment contexts
+Gradually scale with hardware upgrades
+Provide modular fail-safes and privacy control
+🖥️ Hardware Constraints & Deployment Strategy
+🧪 Initial Hardware Context
+Assume the system is running on a 2023-era gaming PC:
+CPU: 8-16 cores (Ryzen 7 / i7)
+GPU: NVIDIA RTX 3070 or 3080 (8–12GB VRAM)
+RAM: 32GB
+OS: Windows 11 or Linux
+This machine is also used for professional multitasking, so resource efficiency is critical.
+🚀 Progressive Upgrade Plan (Agent Awareness)
+Include logic in system setup to detect:
+Current available cores / RAM / GPU headroom
+Upgrade flags for future (e.g., install of 4090, upgrade to 64GB RAM)
+Agents must operate in one of three processing tiers, dynamically:
+Tier	Description	Behavior
+Lite Mode (default)	Minimal resource usage	Agents staggered, LLMs quantized, async queues, cache preference
+Balanced Mode	More real-time reasoning	Moderate API calls, mixed cache + live LLM, selective parallelism
+Enhanced Mode	After upgrade	More agents live, real-time simulation, larger models if capacity available
+Let the system auto-select mode, but allow user override with CLI or config flag:
+bash
+Copy
+python run_agent.py --mode balanced
+🧩 Modular Multi-Agent System (ReAct Framework)
+Use asynchronous task loops or multiprocessing with a central orchestrator
+Agent	Function
+Goal Interpreter	Parses vague user goals into concrete financial targets
+Strategy Planner	Simulates paths based on current capital, market conditions
+Market Analyst	Ingests 1-minute data, caches, evaluates volatility and risk
+Sentiment Agent	Lightweight by default; uses local summary corpora unless enabled
+Execution Agent	Sends real/simulated orders through broker APIs
+Risk Manager	Adjusts allocations, exits, hedging in volatile conditions
+Compliance Agent	Legal/logging pipeline for taxable income
+Watchdog	Oversees anomalies, excessive API or token use
+Meta Agent	Adjusts agent activity frequency based on success rate, load, ROI
+Scheduler	Ensures agents activate at intervals, not all simultaneously
+📊 Data Ingestion
+Prioritize 1-minute interval data for market agents
+Cache in DuckDB, Redis, or SQLite
+Use async fetch + fallback to prevent retries from slowing agents
+Prefer burst querying at low-activity times (night) for simulation/testing
+💬 LLM Access & Load Optimization
+Mode	Model	Strategy
+Default	Local quantized LLM (4–8bit, e.g. Mistral or Gemma via ollama)	Used by all agents with token budget
+Hybrid	Use OpenAI/GPT-4 only for strategy planner	Sentiment & compliance use local
+Cloud-first	Full API use with LLM cost-awareness	Meta-agent tracks usage patterns
+🧠 Optimizations:
+Batch agent LLM requests
+Use shared prompt templates to reduce tokens
+Enable summary compression of long CoT histories
+Use prompt-chaining checkpoints to store partial reasoning in memory
+🧾 Legal & Compliance Layer (Modular)
+Module	Function
+Income Compliance Agent	Monitors realized gains
+Tax Allocator	Reserves based on local jurisdiction tax corpora
+Jurisdiction Rule Engine	Parses .txt/.pdf of tax law documents
+Reserve Allocator	Sends to virtual sub-wallets (e.g., operating, taxes, investments)
+Audit Logger	Logs decisions in immutable, signed files
+Override Switch	User may manually override all decisions with prompt or CLI
+🔐 Modular Security Infrastructure (Resource-Aware)
+Base-Level Security (Always Active):
+Encrypt local logs + secrets (AES-256 or ChaCha20)
+Hide API keys via .env.vault, local secrets store
+TLS-verified network calls
+Role-based command control (Admin, User, Audit)
+Intermediate Security (Toggleable):
+Immutable logs for trade and legal events
+Encrypted cold backups of critical state files
+Watchdog agent to:
+Detect erratic or excessive API/token use
+Kill system if unauthorized outbound calls detected
+Advanced (Later Stages):
+Reverse proxy UI through local VPN or SSH
+Anomaly detection (heuristics, pattern flagging)
+GPG-signed export of tax files and reports
+📡 API Cost Strategy (Dynamic, Agent-Led)
+Remove fixed API usage modes.
+Allow the system to dynamically:
+Estimate cost of each strategy loop
+Forecast token/API spend based on history
+Reject or delay expensive queries if:
+Daily cap ($API_BUDGET = 3.00) is nearing
+ROI is not proportionate
+Notify user if costs rise
+📈 Modes of Use
+Mode	Purpose	Behavior
+Goal Mode	Accepts user target and runs plan to achieve it	Full loop engaged
+Passive Sim Mode	Builds & refines plans only, no live trades	LLM usage lower
+Compliance Mode	Only logs & allocates income from external source	Lightweight
+Live Trading Mode	Full data + execution loop	LLM + API balancing
+Offline Mode	No APIs, local models + data only	Runs simulations with max privacy
+⚙️ Operational Enhancements
+Async task orchestration (e.g., asyncio, multiprocessing)
+Auto-throttling for agent loops when CPU is under load
+Background threading for UI or user prompt interface
+Persistent memory snapshots for recovery and rollback
+Periodic sleep-state mode during low-volume trading hours
+Smart agent activation queue (e.g., Strategy Planner → Market Analyst → Risk Manager → Executor)
+📄 Example Prompt Handling
+Prompt	Response
+“Make $1K from $100”	High-risk path, trade filtering, risk mitigation
+“Use income to create a passive system for retirement”	Compound reinvestment plan with dividend weighting
+“Avoid any online data usage”	Offline mode, local corpora, no APIs
+“Don’t spend over $1/day in API calls”	Token budgeting + system alerts when nearing limit
+🛠️ Summary
+Build a privacy-sensitive, resource-aware, autonomous financial planning system that:
+Starts light and grows as hardware allows
+Makes intelligent trade-offs between privacy, cost, and performance
+Balances real-world viability with autonomous self-reasoning
+Provides legal traceability for all income and financial activity
+Operates safely on shared domestic hardware
