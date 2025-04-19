@@ -4,11 +4,7 @@ from core.agent_base import BaseAgent
 from core.memory import Memory
 from agents.strategy_planner import StrategyPlanner
 from agents.market_analyst import MarketAnalyst
-# Placeholder import for scenario generation (to be created next)
 from agents.scenario_generator import ScenarioGenerator
-
-import threading
-import json
 
 
 class ScenarioOrchestrator(BaseAgent):
@@ -22,44 +18,39 @@ class ScenarioOrchestrator(BaseAgent):
     def run_cycle(self):
         self.log("🎯 Starting Scenario Orchestration Cycle...")
 
+        # Step 1: Load the user's goal
         goal = self.memory.load("latest_goal")
         if not goal:
             self.logger.warning("⚠️ No user goal found. Aborting orchestration.")
-            return
+            return None
 
-        # === Phase 1: Generate contextual scenario ===
+        # Step 2: Generate a contextual scenario
         self.log("🧱 Generating scenario context from user goal...")
         scenario = self.scenario_generator.run(goal)
         self.memory.save("active_scenario", scenario)
 
-        self.log("⚙️ Launching StrategyPlanner and MarketAnalyst in parallel...")
+        # Step 3: Run MarketAnalyst first to extract market conditions
+        self.log("📊 Running MarketAnalyst to extract context...")
+        self.market_analyst.run_cycle(goal)
 
-        strategy_result = {}
-        market_result = {}
+        # Step 4: Use market-informed context to plan strategy
+        self.log("🧠 Running StrategyPlanner using market-informed context...")
+        strategy_result = self.strategy_planner.run_cycle()
 
-        def plan():
-            result = self.strategy_planner.run_cycle()
-            if result:
-                strategy_result.update(result)
-
-        def analyze():
-            # Wait until the strategy is available in memory
-            self.market_analyst.run_cycle(self.memory.load("proposed_strategy"))
-            market_result.update(self.memory.load("evaluated_strategy") or {})
-
-        t1 = threading.Thread(target=plan)
-        t2 = threading.Thread(target=analyze)
-
-        t1.start()
-        t1.join()  # Ensure the strategy is written to memory before analysis begins
-        t2.start()
-        t2.join()
-
-        self.log("🧩 Strategy and market analysis complete.")
-        self.memory.save("orchestrated_output", {
+        # Step 5: Save orchestrated results to memory
+        evaluated = self.memory.load("evaluated_strategy") or {}
+        orchestrated_output = {
             "goal": goal,
+            "scenario": scenario,
             "strategy": strategy_result,
-            "evaluated_strategy": market_result
-        })
+            "evaluated_strategy": evaluated
+        }
+        self.memory.save("orchestrated_output", orchestrated_output)
 
-        self.logger.info("✅ Orchestration cycle complete.")
+        self.logger.info("✅ Scenario orchestration complete.")
+
+        # Step 6: Return structured result for downstream agent
+        return {
+            "scenario": scenario,
+            "plan": evaluated.get("evaluated_steps", strategy_result.get("steps", []))
+        }

@@ -1,3 +1,5 @@
+# agents/logistics_orchestrator.py
+
 from core.agent_base import BaseAgent
 from core.memory import Memory
 from agents.risk_manager import RiskManager
@@ -5,10 +7,14 @@ from agents.compliance_agent import ComplianceAgent
 from agents.execution_agent import ExecutionAgent
 
 import threading
-import json
 
 
 class LogisticsOrchestrator(BaseAgent):
+    """
+    Coordinates downstream validation agents — RiskManager, ComplianceAgent, and ExecutionAgent.
+    Ensures that proposed strategies are realistic, compliant, and executable before continuing.
+    """
+
     def __init__(self):
         super().__init__("LogisticsOrchestrator")
         self.memory = Memory()
@@ -19,48 +25,52 @@ class LogisticsOrchestrator(BaseAgent):
     def run_cycle(self):
         self.log("📦 Starting Logistics Orchestration Cycle...")
 
+        # Load strategy output from ScenarioOrchestrator
         evaluated_strategy = self.memory.load("evaluated_strategy")
         if not evaluated_strategy:
             self.logger.warning("⚠️ No evaluated strategy found. Aborting logistics validation.")
-            return
+            return None
 
-        risk_report = {}
-        compliance_report = {}
-        execution_report = {}
+        # === Initialize parallel results ===
+        results = {
+            "risk_report": None,
+            "compliance_report": None,
+            "execution_report": None
+        }
 
-        def assess_risks():
+        # === Agent runners ===
+        def run_risk_analysis():
             self.risk_manager.run_cycle(evaluated_strategy)
-            nonlocal risk_report
-            risk_report = self.memory.load("latest_risk_report") or {}
+            results["risk_report"] = self.memory.load("latest_risk_report") or {}
 
-        def check_compliance():
+        def run_compliance_check():
             self.compliance_agent.run_cycle(evaluated_strategy)
-            nonlocal compliance_report
-            compliance_report = self.memory.load("latest_compliance_report") or {}
+            results["compliance_report"] = self.memory.load("latest_compliance_report") or {}
 
         def simulate_execution():
             self.execution_agent.run_cycle(evaluated_strategy, simulate_only=True)
-            nonlocal execution_report
-            execution_report = self.memory.load("execution_simulation_result") or {}
+            results["execution_report"] = self.memory.load("execution_simulation_result") or {}
 
         self.log("⚖️ Launching RiskManager, ComplianceAgent, and ExecutionAgent in parallel...")
 
-        t1 = threading.Thread(target=assess_risks)
-        t2 = threading.Thread(target=check_compliance)
-        t3 = threading.Thread(target=simulate_execution)
+        # === Launch all agents in parallel ===
+        threads = [
+            threading.Thread(target=run_risk_analysis),
+            threading.Thread(target=run_compliance_check),
+            threading.Thread(target=simulate_execution),
+        ]
 
-        t1.start()
-        t2.start()
-        t3.start()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
 
-        t1.join()
-        t2.join()
-        t3.join()
+        # === Save validation output ===
+        self.memory.save("logistics_validation", results)
+        self.log("✅ Logistics validation complete. Results saved.")
 
-        self.memory.save("logistics_validation", {
-            "risk_report": risk_report,
-            "compliance_report": compliance_report,
-            "execution_report": execution_report
-        })
+        # === Placeholder gatekeeper logic ===
+        # Future logic: If risk is too high or non-compliance detected, block execution.
+        # If all checks pass, LogisticsOrchestrator will trigger real trades.
 
-        self.log("✅ Logistics validation cycle complete.")
+        return results

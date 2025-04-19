@@ -1,5 +1,3 @@
-# agents/risk_manager.py
-
 from core.agent_base import BaseAgent
 from core.memory import Memory
 from llm.local_llm import call_local_llm
@@ -25,22 +23,16 @@ class RiskManager(BaseAgent):
             return ""
 
     def run_cycle(self):
-        """
-        Orchestrator-compatible cycle entry point: pulls evaluated strategy from memory.
-        """
         evaluated = self.memory.load("evaluated_strategy")
         self.run_with_data(evaluated)
 
     def run_with_data(self, evaluated_strategy: dict):
-        """
-        Performs risk assessment using either LLM or rule-based logic.
-        """
         if not evaluated_strategy:
             self.logger.warning("⚠️ No evaluated strategy provided. Skipping risk assessment.")
             return
 
         self.log("🔍 Running risk assessment...")
-        risk_report = self.evaluate_risks(evaluated_strategy, use_llm=not self.dev_mode)
+        risk_report = self.evaluate_risks(evaluated_strategy)
 
         if risk_report:
             self.memory.save("latest_risk_report", risk_report)
@@ -48,36 +40,28 @@ class RiskManager(BaseAgent):
         else:
             self.logger.warning("❌ Risk report generation failed.")
 
-    def evaluate_risks(self, evaluated_strategy: dict, use_llm: bool = True) -> dict:
-        """
-        Evaluate risk of each step and flag items exceeding the threshold.
-        Use local LLM if enabled, else fallback to rule-based risk evaluator.
-        """
+    def evaluate_risks(self, evaluated_strategy: dict) -> dict:
         if not evaluated_strategy.get("evaluated_steps"):
             self.logger.warning("⚠️ No evaluated steps found in strategy.")
             return {}
 
-        if use_llm:
-            try:
-                prompt = self.construct_prompt(evaluated_strategy)
-                response = call_local_llm(prompt)
+        if self.dev_mode:
+            self.logger.info("🧪 Dev mode active — using rule-based risk review.")
+            return self.rule_based_risk_review(evaluated_strategy)
 
-                start_idx = response.find("{")
-                end_idx = response.rfind("}") + 1
-                if start_idx == -1 or end_idx == -1:
-                    raise ValueError("No JSON object found in LLM response.")
+        try:
+            prompt = self.construct_prompt(evaluated_strategy)
+            response = call_local_llm(prompt)
 
-                parsed = json.loads(response[start_idx:end_idx])
-                if not parsed.get("reviewed_steps"):
-                    raise ValueError("LLM response missing 'reviewed_steps'.")
+            parsed = self.extract_json_from_response(response)
+            if not parsed.get("reviewed_steps"):
+                raise ValueError("LLM response missing 'reviewed_steps'.")
 
-                return parsed
+            return parsed
 
-            except Exception as e:
-                self.logger.error(f"⚠️ LLM-based risk analysis failed: {e}. Falling back to rule-based.")
-
-        # Fallback: Use rule-based risk evaluation
-        return self.rule_based_risk_review(evaluated_strategy)
+        except Exception as e:
+            self.logger.error(f"⚠️ LLM risk evaluation failed: {e}. Reverting to rule-based logic.")
+            return self.rule_based_risk_review(evaluated_strategy)
 
     def rule_based_risk_review(self, evaluated_strategy: dict) -> dict:
         reviewed_steps = []
@@ -102,26 +86,23 @@ class RiskManager(BaseAgent):
             "overall_flagged": overall_flag
         }
 
+    def extract_json_from_response(self, response: str) -> dict:
+        start_idx = response.find("{")
+        end_idx = response.rfind("}") + 1
+        if start_idx == -1 or end_idx == -1:
+            raise ValueError("No JSON object found in response.")
+        return json.loads(response[start_idx:end_idx])
+
     def construct_prompt(self, evaluated_strategy: dict) -> str:
-        prompt_parts = []
+        return "\n\n---\n\n".join([
+            "You are a risk management agent. Analyze the strategy steps below based on market data and risk scores. "
+            "For each step, determine if the risk is acceptable. Flag steps that exceed a threshold (default 8.0).",
 
-        prompt_parts.append(
-            "You are a risk management agent. Analyze the strategy steps below based on market data and risk scores.\n"
-            "For each step, determine if the risk is acceptable. Flag steps that exceed a threshold (default 8.0)."
-        )
+            f"\nCURRENT SCENARIO CONTEXT:\n{self.scenario_context}" if self.scenario_context else "",
 
-        if self.scenario_context:
-            prompt_parts.append(
-                "\n\nCURRENT SCENARIO CONTEXT:\n" + self.scenario_context
-            )
+            "\nEVALUATED STRATEGY:\n" + json.dumps(evaluated_strategy, indent=4),
 
-        prompt_parts.append(
-            "\n\nEVALUATED STRATEGY:\n" + json.dumps(evaluated_strategy, indent=4)
-        )
-
-        prompt_parts.append(
-            "\n\nRespond ONLY in JSON format with this schema:\n"
-            "{ \"reviewed_steps\": [ { \"action\": \"...\", \"risk_score\": 0.0, \"flagged\": true, \"comment\": \"...\" }, ... ], \"average_risk\": 0.0, \"overall_flagged\": true }"
-        )
-
-        return "\n\n---\n\n".join(prompt_parts)
+            "\nRespond ONLY in JSON format with this schema:\n"
+            "{ \"reviewed_steps\": [ { \"action\": \"...\", \"risk_score\": 0.0, \"flagged\": true, \"comment\": \"...\" }, ... ], "
+            "\"average_risk\": 0.0, \"overall_flagged\": true }"
+        ])

@@ -2,9 +2,6 @@
 
 import logging
 from core.memory import Memory
-from agents.goal_interpreter import GoalInterpreter
-from agents.strategy_planner import StrategyPlanner
-from agents.market_analyst import MarketAnalyst
 from agents.scenario_orchestrator import ScenarioOrchestrator
 from agents.logistics_orchestrator import LogisticsOrchestrator
 
@@ -47,8 +44,24 @@ class SimulationManager:
         """
         logger.info("▶️ Starting simulation cycle...")
 
-        self.scenario_orchestrator.run_cycle()
-        self.logistics_orchestrator.run_cycle()
+        # Step 1: Scenario Orchestration
+        scenario_output = self.scenario_orchestrator.run_cycle()
+        if not scenario_output:
+            logger.warning("⚠️ ScenarioOrchestrator returned no output. Aborting cycle.")
+            return
+
+        scenario_data = scenario_output.get("scenario")
+        financial_plan = scenario_output.get("plan")
+
+        if not financial_plan:
+            logger.warning("⚠️ No financial plan generated. Aborting cycle.")
+            return
+
+        # Step 2: Logistics Orchestration
+        self.logistics_orchestrator.run_cycle(
+            scenario_data=scenario_data,
+            plan=financial_plan
+        )
 
         if diagnostic:
             self.print_diagnostics()
